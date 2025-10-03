@@ -1,0 +1,204 @@
+
+<div class="game-container">
+    <div class="stats-bar">
+        <div class="stat">Time: <span id="timer">0:00</span></div>
+        <div class="stat">Hits: <span id="hits">0</span></div>
+        <div class="stat">Misses: <span id="misses">0</span></div>
+    </div>
+    <div class="kanban-board" id="board"></div>
+</div>
+
+<div id="victory">
+    YOU WON!
+    <div class="time">Time: <span id="finalTime"></span></div>
+    <div class="time">Misses: <span id="finalMisses"></span></div>
+    <button class="new-game-btn" onclick="initGame()">New Game</button>
+</div>
+
+<script>
+    const COLS = 7;
+    const ROWS = 6;
+    const COLUMNS = ['Backlog', 'Doing', 'Review', 'QA', 'On Hold', 'Confirmed', 'Closed'];
+    const WORK_ICONS = ['coffee', 'water', 'door', 'laptop', 'email', 'phone', 'chart', 'note', 'printer', 'folder', 'files', 'calendar', 'clock', 'pen', 'clip', 'lock', 'key', 'bulb', 'target', 'pin', 'check'];
+    
+    const iconMap = {
+        coffee: '☕', water: '💧', door: '🚪', laptop: '💻', email: '📧',
+        phone: '📱', chart: '📊', note: '📝', printer: '🖨️', folder: '📁',
+        files: '🗂️', calendar: '📅', clock: '⏰', pen: '🖊️', clip: '📎',
+        lock: '🔒', key: '🔑', bulb: '💡', target: '🎯', pin: '📌', check: '✅'
+    };
+    
+    let gameState = {
+        cards: [],
+        flippedCards: [],
+        matchedCards: [],
+        hits: 0,
+        misses: 0,
+        startTime: null,
+        timerInterval: null,
+        isProcessing: false
+    };
+
+    function shuffleArray(array) {
+        const arr = array.slice();
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+        }
+        return arr;
+    }
+
+    function initGame() {
+        clearInterval(gameState.timerInterval);
+        document.getElementById('victory').style.display = 'none';
+        
+        const doubledIcons = WORK_ICONS.concat(WORK_ICONS);
+        const icons = shuffleArray(doubledIcons);
+        const cards = [];
+        
+        let index = 0;
+        for (let row = 0; row < ROWS; row++) {
+            for (let col = 0; col < COLS; col++) {
+                cards.push({
+                    id: index,
+                    row: row,
+                    col: col,
+                    icon: icons[index],
+                    bugId: 'BUG-' + (1000 + index)
+                });
+                index++;
+            }
+        }
+        
+        gameState = {
+            cards: cards,
+            flippedCards: [],
+            matchedCards: [],
+            hits: 0,
+            misses: 0,
+            startTime: Date.now(),
+            timerInterval: null,
+            isProcessing: false
+        };
+        
+        updateStats();
+        renderBoard();
+        startTimer();
+    }
+
+    function startTimer() {
+        gameState.timerInterval = setInterval(function() {
+            const elapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
+            const mins = Math.floor(elapsed / 60);
+            const secs = elapsed % 60;
+            const secsStr = secs < 10 ? '0' + secs : secs;
+            document.getElementById('timer').textContent = mins + ':' + secsStr;
+        }, 1000);
+    }
+
+    function updateStats() {
+        document.getElementById('hits').textContent = gameState.hits;
+        document.getElementById('misses').textContent = gameState.misses;
+    }
+
+    function renderBoard() {
+        const board = document.getElementById('board');
+        board.innerHTML = '';
+        
+        for (let i = 0; i < COLUMNS.length; i++) {
+            const header = document.createElement('div');
+            header.className = 'column-header col-' + i;
+            header.textContent = COLUMNS[i];
+            board.appendChild(header);
+        }
+        
+        for (let i = 0; i < gameState.cards.length; i++) {
+            const card = gameState.cards[i];
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card col-' + card.col;
+            cardEl.dataset.id = card.id;
+            
+            const isFlipped = gameState.flippedCards.indexOf(card.id) !== -1;
+            const isMatched = gameState.matchedCards.indexOf(card.id) !== -1;
+            
+            if (isMatched) {
+                cardEl.classList.add('matched');
+            } else if (isFlipped) {
+                cardEl.classList.add('flipped');
+                cardEl.textContent = iconMap[card.icon];
+            } else {
+                const bugIdDiv = document.createElement('div');
+                bugIdDiv.className = 'bug-id';
+                bugIdDiv.textContent = card.bugId;
+                
+                const hintDiv = document.createElement('div');
+                hintDiv.className = 'hint';
+                hintDiv.textContent = 'Click to reveal';
+                
+                cardEl.appendChild(bugIdDiv);
+                cardEl.appendChild(hintDiv);
+            }
+            
+            cardEl.addEventListener('click', function() {
+                handleCardClick(card.id);
+            });
+            board.appendChild(cardEl);
+        }
+    }
+
+    function handleCardClick(cardId) {
+        if (gameState.isProcessing) return;
+        if (gameState.flippedCards.indexOf(cardId) !== -1) return;
+        if (gameState.matchedCards.indexOf(cardId) !== -1) return;
+        if (gameState.flippedCards.length >= 2) return;
+        
+        gameState.flippedCards.push(cardId);
+        renderBoard();
+        
+        if (gameState.flippedCards.length === 2) {
+            gameState.isProcessing = true;
+            
+            const card1 = gameState.cards.find(function(c) { return c.id === gameState.flippedCards[0]; });
+            const card2 = gameState.cards.find(function(c) { return c.id === gameState.flippedCards[1]; });
+            
+            if (card1.icon === card2.icon) {
+                setTimeout(function() {
+                    gameState.matchedCards.push(card1.id, card2.id);
+                    gameState.flippedCards = [];
+                    gameState.hits++;
+                    updateStats();
+                    renderBoard();
+                    gameState.isProcessing = false;
+                    
+                    if (gameState.matchedCards.length === gameState.cards.length) {
+                        endGame();
+                    }
+                }, 500);
+            } else {
+                setTimeout(function() {
+                    gameState.flippedCards = [];
+                    gameState.misses++;
+                    updateStats();
+                    renderBoard();
+                    gameState.isProcessing = false;
+                }, 3000);
+            }
+        }
+    }
+
+    function endGame() {
+        clearInterval(gameState.timerInterval);
+        const elapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
+        const mins = Math.floor(elapsed / 60);
+        const secs = elapsed % 60;
+        const secsStr = secs < 10 ? '0' + secs : secs;
+        
+        document.getElementById('finalTime').textContent = mins + ':' + secsStr;
+        document.getElementById('finalMisses').textContent = gameState.misses;
+        document.getElementById('victory').style.display = 'block';
+    }
+
+    initGame();
+</script>

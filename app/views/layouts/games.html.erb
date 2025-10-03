@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "PlayKWC" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="turbo-visit-control" content="disable">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+    <%= stylesheet_link_tag "games", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+  <body>
+    <header>
+      <div class="branding">
+        <span class="logo">PlayKWC.</span> 
+        <span class="tagline">All-in-one <strike>project management software</strike> mindless work games.</span>
+      </div>
+      <%= link_to "Buy me a coffee!", "https://www.buymeacoffee.com/kawaicheung", target: "_blank", class:"buy-me-coffee-btn" %>
+      <div class="profile">
+        <%= image_tag "kc.png" %>
+        <div>by Ka Wai Cheung</div>
+      </div>
+    </header>
+    <main>
+      <div class="sidebar">
+        <ul>
+          <li><%= link_to "Calendar", games_meeting_breakout_path, data: { turbo: false } %></li>
+          <li><%= link_to "Kanban", games_kanban_memory_path, data: { turbo: false } %></li>
+          <li><%= link_to "Gantt Chart", games_gantt_chart_kong_path, data: { turbo: false } %></li>
+        </ul>
+      </div>  
+      <div class="game-container">
+        <%= yield %>
+      </div>
+    </main>
+  </body>
+</html>

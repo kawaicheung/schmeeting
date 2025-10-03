@@ -1,0 +1,484 @@
+
+<div id="gameOver">
+    FELL OFF!<br>
+    <span style="font-size: 24px;">Press R to restart</span>
+</div>
+<div id="win">
+    YOU MADE IT!<br>
+    <span style="font-size: 24px;">Press R for new chart</span>
+</div>
+<canvas id="gameCanvas" width="1200" height="600"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const gameOverEl = document.getElementById('gameOver');
+    const winEl = document.getElementById('win');
+
+    const GRAVITY = 0.6;
+    const GROUND_SPEED = 5;
+    const AIR_SPEED = 3;
+    const PLAYER_WIDTH = 20;
+    const PLAYER_HEIGHT = 20;
+    const CHART_TOP = 50;
+    const CHART_BOTTOM = canvas.height - 80;
+    const CHART_LEFT = 150;
+    const CHART_RIGHT = canvas.width - 50;
+    
+    const numTasks = 14;
+    const chartHeight = CHART_BOTTOM - CHART_TOP;
+    const verticalSpacing = chartHeight / numTasks;
+    const JUMP_POWER = -Math.sqrt(2 * GRAVITY * verticalSpacing * 0.95);
+
+    const FIREBALL_RADIUS = 8;
+    const FIREBALL_SPAWN_INTERVAL = 2000;
+    const FIREBALL_INITIAL_VY = 2;
+    const FIREBALL_BOUNCE_DAMPING = 0.8;
+
+    const TASK_NAMES = [
+        'Write landing page',
+        'Approve copy',
+        'Review design',
+        'Build page',
+        'Code review',
+        'Write email',
+        'Design email',
+        'Send email',
+        'Analyze results',
+        'Plan meeting',
+        'Reserve room',
+        'Finalize presentation',
+        'Approve deck',
+        'Create invitations',
+        'Review calculator',
+        'Code calculator',
+        'Update messaging',
+        'Publish update'
+    ];
+
+    let gameState = {
+        player: {
+            x: 300,
+            y: CHART_BOTTOM,
+            vx: 0,
+            vy: 0,
+            onGround: true,
+            hasPowerUp: false
+        },
+        bars: [],
+        powerUps: [],
+        fireballs: [],
+        gameOver: false,
+        won: false,
+        keys: {},
+        lastFireballSpawn: 0
+    };
+
+    function generateGanttChart() {
+        const bars = [];
+        const numTasksRandom = 12 + Math.floor(Math.random() * 6);
+        const barHeight = 25;
+        
+        for (let i = 0; i < numTasksRandom; i++) {
+            const y = CHART_BOTTOM - (i + 1) * verticalSpacing;
+            
+            const minWidth = 100;
+            const maxWidth = 400;
+            const width = minWidth + Math.random() * (maxWidth - minWidth);
+            
+            let x;
+            
+            if (i === 0) {
+                x = CHART_LEFT + Math.random() * 300;
+            } else {
+                const prevBar = bars[i - 1];
+                const minX = Math.max(CHART_LEFT, prevBar.x - width + 1);
+                const maxX = Math.min(CHART_RIGHT - width, prevBar.x + prevBar.width - 1);
+                const range = maxX - minX;
+                x = minX + Math.random() * range;
+            }
+            
+            bars.push({
+                x: x,
+                y: y,
+                width: width,
+                height: barHeight,
+                name: TASK_NAMES[Math.floor(Math.random() * TASK_NAMES.length)],
+                color: `hsl(${Math.random() * 360}, 70%, 60%)`
+            });
+        }
+        
+        const powerUps = [];
+        const numPowerUps = 2 + Math.floor(Math.random() * 2);
+        
+        for (let i = 0; i < numPowerUps; i++) {
+            const barIndex = 2 + Math.floor(Math.random() * (bars.length - 4));
+            const bar = bars[barIndex];
+            
+            powerUps.push({
+                x: bar.x + bar.width / 2,
+                y: bar.y,  // Changed from bar.y - 25 to bar.y (on top of bar)
+                collected: false
+            });
+        }
+        
+        return { bars, powerUps };
+    }
+
+    function initGame() {
+        const { bars, powerUps } = generateGanttChart();
+        
+        gameState = {
+            player: {
+                x: 300,
+                y: CHART_BOTTOM,
+                vx: 0,
+                vy: 0,
+                onGround: true,
+                hasPowerUp: false
+            },
+            bars: bars,
+            powerUps: powerUps,
+            fireballs: [],
+            gameOver: false,
+            won: false,
+            keys: {},
+            lastFireballSpawn: Date.now()
+        };
+        
+        gameOverEl.style.display = 'none';
+        winEl.style.display = 'none';
+    }
+
+    function spawnFireball() {
+        const x = CHART_LEFT + Math.random() * (CHART_RIGHT - CHART_LEFT);
+        const vx = (Math.random() - 0.5) * 6;
+        
+        gameState.fireballs.push({
+            x: x,
+            y: 0,
+            vx: vx,
+            vy: FIREBALL_INITIAL_VY
+        });
+    }
+
+    function updateFireballs() {
+        const now = Date.now();
+        
+        if (now - gameState.lastFireballSpawn > FIREBALL_SPAWN_INTERVAL) {
+            spawnFireball();
+            gameState.lastFireballSpawn = now;
+        }
+        
+        for (let i = gameState.fireballs.length - 1; i >= 0; i--) {
+            const fb = gameState.fireballs[i];
+            
+            fb.vy += GRAVITY * 0.5;
+            fb.x += fb.vx;
+            fb.y += fb.vy;
+            
+            if (fb.x - FIREBALL_RADIUS <= CHART_LEFT) {
+                fb.x = CHART_LEFT + FIREBALL_RADIUS;
+                fb.vx = -fb.vx * FIREBALL_BOUNCE_DAMPING;
+            }
+            if (fb.x + FIREBALL_RADIUS >= CHART_RIGHT) {
+                fb.x = CHART_RIGHT - FIREBALL_RADIUS;
+                fb.vx = -fb.vx * FIREBALL_BOUNCE_DAMPING;
+            }
+            
+            if (fb.y + FIREBALL_RADIUS >= CHART_BOTTOM) {
+                fb.y = CHART_BOTTOM - FIREBALL_RADIUS;
+                fb.vy = -fb.vy * FIREBALL_BOUNCE_DAMPING;
+                fb.vx *= 0.95;
+            }
+            
+            gameState.bars.forEach(bar => {
+                if (fb.x + FIREBALL_RADIUS >= bar.x &&
+                    fb.x - FIREBALL_RADIUS <= bar.x + bar.width &&
+                    fb.y + FIREBALL_RADIUS >= bar.y &&
+                    fb.y - FIREBALL_RADIUS <= bar.y + bar.height) {
+                    
+                    const overlapLeft = (fb.x + FIREBALL_RADIUS) - bar.x;
+                    const overlapRight = (bar.x + bar.width) - (fb.x - FIREBALL_RADIUS);
+                    const overlapTop = (fb.y + FIREBALL_RADIUS) - bar.y;
+                    const overlapBottom = (bar.y + bar.height) - (fb.y - FIREBALL_RADIUS);
+                    
+                    const minOverlapX = Math.min(overlapLeft, overlapRight);
+                    const minOverlapY = Math.min(overlapTop, overlapBottom);
+                    
+                    if (minOverlapX < minOverlapY) {
+                        fb.vx = -fb.vx * FIREBALL_BOUNCE_DAMPING;
+                        if (overlapLeft < overlapRight) {
+                            fb.x = bar.x - FIREBALL_RADIUS;
+                        } else {
+                            fb.x = bar.x + bar.width + FIREBALL_RADIUS;
+                        }
+                    } else {
+                        fb.vy = -fb.vy * FIREBALL_BOUNCE_DAMPING;
+                        if (overlapTop < overlapBottom) {
+                            fb.y = bar.y - FIREBALL_RADIUS;
+                        } else {
+                            fb.y = bar.y + bar.height + FIREBALL_RADIUS;
+                        }
+                    }
+                }
+            });
+            
+            const dx = fb.x - gameState.player.x;
+            const dy = fb.y - (gameState.player.y - PLAYER_HEIGHT / 2);
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < FIREBALL_RADIUS + PLAYER_WIDTH / 2) {
+                gameState.gameOver = true;
+                gameOverEl.innerHTML = 'HIT BY FIREBALL!<br><span style="font-size: 24px;">Press R to restart</span>';
+                gameOverEl.style.display = 'block';
+            }
+            
+            if (Math.abs(fb.vx) < 0.1 && Math.abs(fb.vy) < 0.1 && fb.y >= CHART_BOTTOM - FIREBALL_RADIUS - 5) {
+                gameState.fireballs.splice(i, 1);
+            }
+        }
+    }
+
+    function drawFireballs() {
+        gameState.fireballs.forEach(fb => {
+            const gradient = ctx.createRadialGradient(fb.x, fb.y, 0, fb.x, fb.y, FIREBALL_RADIUS);
+            gradient.addColorStop(0, '#ffff00');
+            gradient.addColorStop(0.4, '#ff6600');
+            gradient.addColorStop(1, '#ff0000');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(fb.x, fb.y, FIREBALL_RADIUS, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = 'rgba(255, 100, 0, 0.5)';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        });
+    }
+
+    function drawChart() {
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.lineWidth = 1;
+        
+        for (let i = 0; i <= 4; i++) {
+            const x = CHART_LEFT + (CHART_RIGHT - CHART_LEFT) * (i / 4);
+            ctx.beginPath();
+            ctx.moveTo(x, CHART_TOP);
+            ctx.lineTo(x, CHART_BOTTOM);
+            ctx.stroke();
+            
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`WEEK ${i + 1}`, x + (CHART_RIGHT - CHART_LEFT) / 8, CHART_TOP - 15);
+        }
+        
+        const numLines = 10;
+        for (let i = 0; i <= numLines; i++) {
+            const y = CHART_TOP + (CHART_BOTTOM - CHART_TOP) * (i / numLines);
+            ctx.beginPath();
+            ctx.moveTo(CHART_LEFT, y);
+            ctx.lineTo(CHART_RIGHT, y);
+            ctx.stroke();
+        }
+        
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(CHART_LEFT, CHART_BOTTOM);
+        ctx.lineTo(CHART_RIGHT, CHART_BOTTOM);
+        ctx.stroke();
+        
+        gameState.bars.forEach(bar => {
+            ctx.fillStyle = bar.color;
+            ctx.fillRect(bar.x, bar.y, bar.width, bar.height);
+            
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(bar.x, bar.y, bar.width, bar.height);
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 11px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(bar.name, bar.x + 5, bar.y + bar.height / 2 + 4);
+            
+            const endX = bar.x + bar.width;
+            const endY = bar.y + bar.height / 2;
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.moveTo(endX, endY - 5);
+            ctx.lineTo(endX + 5, endY);
+            ctx.lineTo(endX, endY + 5);
+            ctx.lineTo(endX - 5, endY);
+            ctx.closePath();
+            ctx.fill();
+        });
+        
+        gameState.powerUps.forEach(powerUp => {
+            if (!powerUp.collected) {
+                ctx.save();
+                ctx.translate(powerUp.x, powerUp.y);
+                
+                const time = Date.now() / 1000;
+                ctx.rotate(time * 2);
+                
+                ctx.fillStyle = '#FFD700';
+                ctx.strokeStyle = '#FF8C00';
+                ctx.lineWidth = 3;
+                
+                ctx.beginPath();
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+                    const x = Math.cos(angle) * 12;
+                    const y = Math.sin(angle) * 12;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+        });
+    }
+
+    function drawPlayer() {
+        const playerSize = gameState.player.hasPowerUp ? PLAYER_WIDTH * 1.4 : PLAYER_WIDTH;
+        const playerHeight = gameState.player.hasPowerUp ? PLAYER_HEIGHT * 1.4 : PLAYER_HEIGHT;
+        
+        ctx.fillStyle = gameState.player.hasPowerUp ? '#FFD700' : '#0066cc';
+        ctx.fillRect(gameState.player.x - playerSize/2, gameState.player.y - playerHeight, playerSize, playerHeight);
+        
+        if (gameState.player.hasPowerUp) {
+            ctx.strokeStyle = '#FF8C00';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(gameState.player.x - playerSize/2, gameState.player.y - playerHeight, playerSize, playerHeight);
+        }
+        
+        ctx.fillStyle = '#fff';
+        const eyeOffset = gameState.player.hasPowerUp ? 1 : 0;
+        ctx.fillRect(gameState.player.x - 6 - eyeOffset, gameState.player.y - playerHeight + 5, 4, 4);
+        ctx.fillRect(gameState.player.x + 2 + eyeOffset, gameState.player.y - playerHeight + 5, 4, 4);
+    }
+
+    function updatePlayer() {
+        if (gameState.gameOver || gameState.won) return;
+        
+        gameState.player.vy += GRAVITY;
+        
+        if ((gameState.keys['ArrowUp'] || gameState.keys[' ']) && gameState.player.onGround) {
+            const jumpMultiplier = gameState.player.hasPowerUp ? 2 : 1;
+            gameState.player.vy = JUMP_POWER * jumpMultiplier;
+            gameState.player.onGround = false;
+            
+            if (gameState.player.hasPowerUp) {
+                gameState.player.hasPowerUp = false;
+            }
+        }
+        
+        const moveSpeed = gameState.player.onGround ? GROUND_SPEED : AIR_SPEED;
+        
+        if (gameState.keys['ArrowLeft']) {
+            gameState.player.vx = -moveSpeed;
+        } else if (gameState.keys['ArrowRight']) {
+            gameState.player.vx = moveSpeed;
+        } else {
+            gameState.player.vx *= 0.9;
+        }
+        
+        gameState.player.x += gameState.player.vx;
+        gameState.player.y += gameState.player.vy;
+        
+        if (gameState.player.x < CHART_LEFT) gameState.player.x = CHART_LEFT;
+        if (gameState.player.x > CHART_RIGHT) gameState.player.x = CHART_RIGHT;
+        
+        gameState.powerUps.forEach(powerUp => {
+            if (!powerUp.collected) {
+                const dx = gameState.player.x - powerUp.x;
+                const dy = (gameState.player.y - PLAYER_HEIGHT/2) - powerUp.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 25) {
+                    powerUp.collected = true;
+                    gameState.player.hasPowerUp = true;
+                }
+            }
+        });
+        
+        if (gameState.player.y > CHART_BOTTOM + 50) {
+            gameState.gameOver = true;
+            gameOverEl.innerHTML = 'FELL OFF!<br><span style="font-size: 24px;">Press R to restart</span>';
+            gameOverEl.style.display = 'block';
+            return;
+        }
+        
+        if (gameState.player.y < CHART_TOP - 30) {
+            gameState.won = true;
+            winEl.style.display = 'block';
+            return;
+        }
+        
+        gameState.player.onGround = false;
+        
+        if (gameState.player.y >= CHART_BOTTOM && gameState.player.vy >= 0) {
+            gameState.player.y = CHART_BOTTOM;
+            gameState.player.vy = 0;
+            gameState.player.onGround = true;
+        }
+        
+        gameState.bars.forEach(bar => {
+            if (gameState.player.vy >= 0 &&
+                gameState.player.y >= bar.y &&
+                gameState.player.y - PLAYER_HEIGHT <= bar.y + bar.height &&
+                gameState.player.x >= bar.x - PLAYER_WIDTH/2 &&
+                gameState.player.x <= bar.x + bar.width + PLAYER_WIDTH/2) {
+                
+                if (gameState.player.y - PLAYER_HEIGHT < bar.y + 10) {
+                    gameState.player.y = bar.y;
+                    gameState.player.vy = 0;
+                    gameState.player.onGround = true;
+                }
+            }
+        });
+    }
+
+    function drawGame() {
+        ctx.fillStyle = '#f5f5f5';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        drawChart();
+        drawFireballs();
+        drawPlayer();
+    }
+
+    function gameLoop() {
+        if (!gameState.gameOver && !gameState.won) {
+            updateFireballs();
+        }
+        updatePlayer();
+        drawGame();
+        requestAnimationFrame(gameLoop);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        gameState.keys[e.key] = true;
+        
+        if (e.key === 'r' || e.key === 'R') {
+            initGame();
+        }
+        
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+            e.preventDefault();
+        }
+    });
+
+    document.addEventListener('keyup', (e) => {
+        gameState.keys[e.key] = false;
+    });
+
+    initGame();
+    gameLoop();
+</script>

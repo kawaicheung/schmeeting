@@ -1,0 +1,133 @@
+/*
+ * This is a manifest file that'll be compiled into application.css, which will include all the files
+ * listed below.
+ *
+ * Any CSS (and SCSS, if configured) file within this directory, lib/assets/stylesheets, or any plugin's
+ * vendor/assets/stylesheets directory can be referenced here using a relative path.
+ *
+ * You're free to add application-wide styles to this file and they'll appear at the bottom of the
+ * compiled file so the styles you add here take precedence over styles defined in any other CSS
+ * files in this directory. Styles in this file should be added after the last require_* statement.
+ * It is generally better to create a new file per style scope.
+ *
+ *= require_tree ./_components
+ *= require_tree ./games
+ *= require_self
+ */
+
+html {
+  font-size: 16px;
+  font-family: var(--font-family--sans-serif);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color--bg);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+header {
+  background: var(--color--bg);
+  color: var(--color--black);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.75rem var(--padding--viewport-sides);
+  gap: 1rem;
+
+  .branding {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-right: auto;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: -0.025rem;
+
+    .logo {
+      font-size: 1.6rem;
+      font-style: italic;
+      font-weight: 900;
+    }
+  }
+
+  a {
+    color: #fff;
+  }
+
+  .buy-me-coffee-btn {
+    background: var(--color-0-50);
+    border-radius: 0.5rem;
+    border: var(--border--crevice);
+    padding:  0.75rem;
+    text-decoration: none;
+    background: var(--background--retro-tread);
+    background-size: var(--background-size--retro-tread);
+    animation: var(--animation--retro-tread);
+    color: var(--color--black);
+    white-space: nowrap !important;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: -0.025rem;
+  
+    &::after {
+      content: '☕';
+      padding-left: 0.25rem;
+    }
+  }
+
+  .profile {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: -0.025rem;
+
+    img {
+      width: 2rem;
+      height: 2rem;
+      object-fit: cover;   /* ensures it doesn’t look squished */
+      border-radius: 50%;
+    }
+  }
+}
+
+main {
+  display: flex;
+  width: 100%;
+  height: 100%;
+
+  .sidebar {
+    width: 20rem;
+
+    ul {
+      margin-top: 2rem;
+      width: 100%;
+      height: 100%;
+      list-style-type: none;
+      padding: 0;
+
+      li {
+        padding: 0;
+        width: 100%;
+
+        a {
+          width: 100%;
+          display: inline-block;
+          padding: 0.5rem var(--padding--viewport-sides);
+          border-bottom: solid 1px #ccc;
+          text-decoration: none;
+          color: var(--color--black);
+        }
+      }
+    }
+  }
+
+  .game-container {
+    width: 100%;
+  }
+}

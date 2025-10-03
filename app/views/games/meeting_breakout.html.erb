@@ -1,0 +1,638 @@
+
+  <div id="score">Score: 0</div>
+  <div id="gameOver">GAME OVER<br><span style="font-size: 24px;">Press SPACE to restart</span></div>
+  <div id="highScores">
+    <h2>HIGH SCORES</h2>
+    <table id="scoresTable">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Score</th>
+                <th>Meetings</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody id="scoresBody">
+        </tbody>
+    </table>
+    <button onclick="closeHighScores()">Continue (SPACE)</button>
+  </div>
+  
+    <canvas id="gameCanvas" width="1200" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const gameOverEl = document.getElementById('gameOver');
+        const highScoresEl = document.getElementById('highScores');
+        const scoresBodyEl = document.getElementById('scoresBody');
+
+        // Game configuration
+        let newHighScoreIndex = -1;
+        const TIME_LABEL_WIDTH = 50; // Adjust this to control time label space
+        const MAX_HIGH_SCORES = 10;
+        const NUM_BALLS = 5; // Configure number of balls in play
+        const BRICK_COLS = 7;
+        const BRICK_PADDING = 3;
+        const BRICK_OFFSET_TOP = 80;
+        const BRICK_OFFSET_LEFT = TIME_LABEL_WIDTH + 10;
+        const BRICK_WIDTH = (canvas.width - BRICK_OFFSET_LEFT * 2 - BRICK_PADDING * (BRICK_COLS - 1)) / BRICK_COLS;
+        const BASE_BRICK_HEIGHT = 25;
+        
+        const PADDLE_WIDTH = 120;
+        const PADDLE_HEIGHT = 15;
+        const PADDLE_Y = canvas.height - 40;
+        const PADDLE_SPEED = 10;
+        
+        const BALL_RADIUS = 5;
+        const BALL_BASE_SPEED = 5;
+
+        const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        
+        const MEETING_TITLES = [
+            'Standup',
+            '1:1',
+            'Product Review',
+            'Sprint Planning',
+            'Client Call',
+            'Design Sync',
+            'Budget Review',
+            'All Hands',
+            'Engineering Sync',
+            'Marketing Brief',
+            'Sales Update',
+            'Strategy Session',
+            'Retrospective',
+            'Interview',
+            'Training',
+            'Board Meeting',
+            'Vendor Demo',
+            'Code Review',
+            'Architecture',
+            'Customer Feedback',
+            'Planning',
+            'Quarterly Review',
+            'Team Lunch',
+            'Performance Review'
+        ];
+        
+        const MEETING_COLORS = [
+            '#4285F4', '#EA4335', '#FBBC04', '#34A853', 
+            '#FF6D00', '#9C27B0', '#00897B', '#D81B60',
+            '#3F51B5', '#E91E63', '#009688', '#FF5722'
+        ];
+
+        let gameState = {
+            score: 0,
+            gameOver: false,
+            won: false,
+            meetingsDestroyed: 0,
+            paddle: {
+                x: canvas.width / 2 - PADDLE_WIDTH / 2,
+                vx: 0
+            },
+            balls: [],
+            bricks: [],
+            keys: {}
+        };
+
+function createBricks() {
+    const bricks = [];
+    const maxRow = Math.floor((350 - BRICK_OFFSET_TOP) / (BASE_BRICK_HEIGHT + BRICK_PADDING));
+    
+    for (let day = 0; day < 7; day++) {
+        let currentRow = 0;
+        
+        // Fill all slots for this day
+        while (currentRow < maxRow) {
+            // Random height: 1-4 rows tall, but not exceeding remaining space
+            const remainingRows = maxRow - currentRow;
+            const maxRowSpan = Math.min(4, remainingRows);
+            const rowSpan = Math.floor(Math.random() * maxRowSpan) + 1;
+            const height = rowSpan * BASE_BRICK_HEIGHT + (rowSpan - 1) * BRICK_PADDING;
+            
+            // Full width of the day
+            const width = BRICK_WIDTH;
+            
+            const x = BRICK_OFFSET_LEFT + day * (BRICK_WIDTH + BRICK_PADDING);
+            const y = BRICK_OFFSET_TOP + currentRow * (BASE_BRICK_HEIGHT + BRICK_PADDING);
+            
+            bricks.push({
+                x: x,
+                y: y,
+                width: width,
+                height: height,
+                title: MEETING_TITLES[Math.floor(Math.random() * MEETING_TITLES.length)],
+                color: MEETING_COLORS[Math.floor(Math.random() * MEETING_COLORS.length)],
+                day: DAYS[day],
+                active: true,
+                points: rowSpan * 10
+            });
+            
+            currentRow += rowSpan;
+        }
+    }
+    
+    return bricks;
+}
+
+        function launchBall() {
+            const angle = -Math.PI / 4 + (Math.random() * Math.PI / 4 - Math.PI / 8);
+            const offsetX = (Math.random() - 0.5) * 200;
+            return {
+                x: canvas.width / 2 + offsetX,
+                y: canvas.height * 0.75,
+                vx: Math.cos(angle) * BALL_BASE_SPEED,
+                vy: Math.sin(angle) * BALL_BASE_SPEED,
+                active: true
+            };
+        }
+
+        function addRandomMeeting() {
+            const day = Math.floor(Math.random() * 7);
+    
+    // Weekends get 25% frequency
+    const isWeekend = day === 0 || day === 6;
+    if (isWeekend && Math.random() > 0.25) {
+        return;
+    }
+    
+    // Find all empty spaces for this day
+    const dayX = BRICK_OFFSET_LEFT + day * (BRICK_WIDTH + BRICK_PADDING);
+    const maxY = 350;
+    const minY = BRICK_OFFSET_TOP;
+    
+    // Create a grid of occupied spaces (by row)
+    const occupiedRanges = [];
+    gameState.bricks.forEach(brick => {
+        if (!brick.active) return;
+        
+        // Check if this brick is in the selected day
+        const brickDayStart = Math.round(brick.x);
+        const targetDayStart = Math.round(dayX);
+        
+        if (Math.abs(brickDayStart - targetDayStart) < 5) { // Same day column
+            const startRow = Math.floor((brick.y - minY) / (BASE_BRICK_HEIGHT + BRICK_PADDING));
+            const endRow = Math.floor((brick.y + brick.height - minY) / (BASE_BRICK_HEIGHT + BRICK_PADDING));
+            occupiedRanges.push({ start: startRow, end: endRow });
+        }
+    });
+    
+    // Sort and merge overlapping ranges
+    occupiedRanges.sort((a, b) => a.start - b.start);
+    const mergedRanges = [];
+    occupiedRanges.forEach(range => {
+        if (mergedRanges.length === 0) {
+            mergedRanges.push(range);
+        } else {
+            const last = mergedRanges[mergedRanges.length - 1];
+            if (range.start <= last.end + 1) {
+                last.end = Math.max(last.end, range.end);
+            } else {
+                mergedRanges.push(range);
+            }
+        }
+    });
+    
+    // Find empty ranges
+    const maxRow = Math.floor((maxY - minY) / (BASE_BRICK_HEIGHT + BRICK_PADDING));
+    const emptyRanges = [];
+    let currentRow = 0;
+    
+    mergedRanges.forEach(occupied => {
+        if (currentRow < occupied.start) {
+            emptyRanges.push({ start: currentRow, end: occupied.start - 1 });
+        }
+        currentRow = occupied.end + 1;
+    });
+    
+    if (currentRow < maxRow) {
+        emptyRanges.push({ start: currentRow, end: maxRow });
+    }
+    
+    // If no empty spaces, don't add a meeting
+    if (emptyRanges.length === 0) {
+        return;
+    }
+    
+    // Pick a random empty range
+    const emptyRange = emptyRanges[Math.floor(Math.random() * emptyRanges.length)];
+    const availableRows = emptyRange.end - emptyRange.start + 1;
+    
+    // Random height (1-3 rows, but not more than available space)
+    const rowSpan = Math.min(Math.floor(Math.random() * 3) + 1, availableRows);
+    const height = rowSpan * BASE_BRICK_HEIGHT + (rowSpan - 1) * BRICK_PADDING;
+    
+    // Random position within the empty range
+    const maxStartRow = emptyRange.end - rowSpan + 1;
+    const startRow = emptyRange.start + Math.floor(Math.random() * (maxStartRow - emptyRange.start + 1));
+    const y = minY + startRow * (BASE_BRICK_HEIGHT + BRICK_PADDING);
+    
+    // Full width of the day
+    const width = BRICK_WIDTH;
+    
+    gameState.bricks.push({
+        x: dayX,
+        y: y,
+        width: width,
+        height: height,
+        title: MEETING_TITLES[Math.floor(Math.random() * MEETING_TITLES.length)],
+        color: MEETING_COLORS[Math.floor(Math.random() * MEETING_COLORS.length)],
+        day: DAYS[day],
+        active: true,
+        points: rowSpan * 10
+    });
+}
+        function initGame() {
+            gameState = {
+                score: 0,
+                gameOver: false,
+                won: false,
+                meetingsDestroyed: 0,
+                paddle: {
+                    x: canvas.width / 2 - PADDLE_WIDTH / 2,
+                    vx: 0
+                },
+                balls: [],
+                bricks: createBricks(),
+                keys: {}
+            };
+
+            // Launch initial balls
+            for (let i = 0; i < NUM_BALLS; i++) {
+                gameState.balls.push(launchBall());
+            }
+
+            gameOverEl.style.display = 'none';
+            highScoresEl.style.display = 'none';
+            newHighScoreIndex = -1;
+            scoreEl.textContent = 'Score: 0';
+        }
+
+        function drawBricks() {
+            // Draw day headers
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = '#FFFFFF';
+            for (let day = 0; day < 7; day++) {
+                const x = BRICK_OFFSET_LEFT + day * (BRICK_WIDTH + BRICK_PADDING) + BRICK_WIDTH / 2;
+                ctx.textAlign = 'center';
+                ctx.fillText(DAYS[day], x, BRICK_OFFSET_TOP - 30);
+            }
+
+            // Draw grid lines to simulate calendar
+            ctx.strokeStyle = 'rgba(100, 150, 200, 0.5)'; // Light blue, semi-transparent
+            ctx.lineWidth = 1;
+
+            // Draw vertical lines between days
+            for (let day = 1; day < 7; day++) {
+                const x = BRICK_OFFSET_LEFT + day * (BRICK_WIDTH + BRICK_PADDING) - BRICK_PADDING / 2;
+                ctx.beginPath();
+                ctx.moveTo(x, BRICK_OFFSET_TOP);
+                ctx.lineTo(x, 380);
+                ctx.stroke();
+            }
+
+            // Draw horizontal lines for time slots
+            for (let i = 0; i <= 10; i++) {
+                const y = BRICK_OFFSET_TOP + i * (BASE_BRICK_HEIGHT + BRICK_PADDING);
+                if (y < 380) {
+                    ctx.beginPath();
+                    ctx.moveTo(BRICK_OFFSET_LEFT, y);
+                    ctx.lineTo(canvas.width - BRICK_OFFSET_LEFT, y);
+                    ctx.stroke();
+                }
+            }
+            
+            // Draw time markers
+            ctx.font = '10px Arial';
+            ctx.fillStyle = '#888';
+            ctx.textAlign = 'right';
+            for (let i = 0; i <= 10; i++) {
+                const y = BRICK_OFFSET_TOP + i * (BASE_BRICK_HEIGHT + BRICK_PADDING);
+                if (y < 380) {
+                    const hour = 8 + i;
+                    ctx.fillText(`${hour}:00`, TIME_LABEL_WIDTH - 5, y + 5);
+                }
+            }
+            
+            // Draw meetings
+            gameState.bricks.forEach(brick => {
+                if (brick.active) {
+                    // Draw meeting block with rounded corners
+                    ctx.fillStyle = brick.color;
+                    const radius = 5; // Adjust this value for more/less rounding
+                    const x = brick.x;
+                    const y = brick.y;
+                    const width = brick.width;
+                    const height = brick.height;
+
+                    ctx.beginPath();
+                    ctx.moveTo(x + radius, y);
+                    ctx.lineTo(x + width - radius, y);
+                    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+                    ctx.lineTo(x + width, y + height - radius);
+                    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                    ctx.lineTo(x + radius, y + height);
+                    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+                    ctx.lineTo(x, y + radius);
+                    ctx.quadraticCurveTo(x, y, x + radius, y);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Add subtle highlight
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                    ctx.fillRect(brick.x, brick.y, brick.width, brick.height * 0.25);
+                    
+                    // Draw meeting title
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = 'bold 11px Arial';
+                    ctx.textAlign = 'center';
+                    
+                    const centerX = brick.x + brick.width / 2;
+                    const centerY = brick.y + brick.height / 2 + 4;
+                    
+                    // Truncate text if needed
+                    let displayText = brick.title;
+                    ctx.textAlign = 'center';
+                    const maxWidth = brick.width - 10;
+                    
+                    while (ctx.measureText(displayText).width > maxWidth && displayText.length > 0) {
+                        displayText = displayText.slice(0, -1);
+                    }
+                    if (displayText.length < brick.title.length && displayText.length > 3) {
+                        displayText = displayText.slice(0, -3) + '...';
+                    }
+                    
+                    ctx.fillText(displayText, centerX, centerY);
+                }
+            });
+        }
+
+        function drawPaddle() {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(gameState.paddle.x, PADDLE_Y, PADDLE_WIDTH, PADDLE_HEIGHT);
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.fillRect(gameState.paddle.x, PADDLE_Y, PADDLE_WIDTH, PADDLE_HEIGHT / 3);
+        }
+
+        function drawBall(ball) {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.beginPath();
+            ctx.arc(ball.x - 2, ball.y - 2, BALL_RADIUS / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function updatePaddle() {
+            if (gameState.keys['ArrowLeft']) {
+                gameState.paddle.vx = -PADDLE_SPEED;
+            } else if (gameState.keys['ArrowRight']) {
+                gameState.paddle.vx = PADDLE_SPEED;
+            } else {
+                gameState.paddle.vx *= 0.8;
+            }
+
+            gameState.paddle.x += gameState.paddle.vx;
+
+            if (gameState.paddle.x < 0) {
+                gameState.paddle.x = 0;
+                gameState.paddle.vx = 0;
+            }
+            if (gameState.paddle.x + PADDLE_WIDTH > canvas.width) {
+                gameState.paddle.x = canvas.width - PADDLE_WIDTH;
+                gameState.paddle.vx = 0;
+            }
+        }
+
+        function updateBall() {
+            // Update all balls
+            for (let i = gameState.balls.length - 1; i >= 0; i--) {
+                const ball = gameState.balls[i];
+                
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+
+                // Wall collisions (left and right)
+                if (ball.x - BALL_RADIUS <= 0 || ball.x + BALL_RADIUS >= canvas.width) {
+                    ball.vx = -ball.vx;
+                    ball.x = Math.max(BALL_RADIUS, Math.min(canvas.width - BALL_RADIUS, ball.x));
+                }
+
+                // Top wall collision
+                if (ball.y - BALL_RADIUS <= 0) {
+                    ball.vy = -ball.vy;
+                    ball.y = BALL_RADIUS;
+                }
+
+                // Bottom wall - ball fell
+                if (ball.y - BALL_RADIUS > canvas.height) {
+                    // Remove this ball
+                    gameState.balls.splice(i, 1);
+                    
+                    // Add a new meeting
+                    addRandomMeeting();
+                    
+                    // Spawn a new ball
+                    gameState.balls.push(launchBall());
+                    
+                    continue;
+                }
+
+                // Paddle collision
+                if (ball.y + BALL_RADIUS >= PADDLE_Y &&
+                    ball.y - BALL_RADIUS <= PADDLE_Y + PADDLE_HEIGHT &&
+                    ball.x >= gameState.paddle.x &&
+                    ball.x <= gameState.paddle.x + PADDLE_WIDTH) {
+                    
+                    const hitPos = (ball.x - gameState.paddle.x) / PADDLE_WIDTH;
+                    const angle = -Math.PI / 3 + (hitPos * (2 * Math.PI / 3));
+                    const paddleSpeedBonus = Math.abs(gameState.paddle.vx) * 0.3;
+                    const speed = BALL_BASE_SPEED + paddleSpeedBonus;
+                    
+                    ball.vx = Math.sin(angle) * speed;
+                    ball.vy = -Math.cos(angle) * speed;
+                    ball.y = PADDLE_Y - BALL_RADIUS;
+                }
+
+                // Brick collisions
+                gameState.bricks.forEach(brick => {
+                    if (!brick.active) return;
+
+                    if (ball.x + BALL_RADIUS >= brick.x &&
+                        ball.x - BALL_RADIUS <= brick.x + brick.width &&
+                        ball.y + BALL_RADIUS >= brick.y &&
+                        ball.y - BALL_RADIUS <= brick.y + brick.height) {
+                        
+                        brick.active = false;
+                        gameState.score += brick.points;
+                        gameState.meetingsDestroyed++;
+                        scoreEl.textContent = 'Score: ' + gameState.score;
+
+                        const ballCenterX = ball.x;
+                        const ballCenterY = ball.y;
+                        const brickCenterX = brick.x + brick.width / 2;
+                        const brickCenterY = brick.y + brick.height / 2;
+
+                        const dx = ballCenterX - brickCenterX;
+                        const dy = ballCenterY - brickCenterY;
+
+                        if (Math.abs(dx / brick.width) > Math.abs(dy / brick.height)) {
+                            ball.vx = -ball.vx;
+                        } else {
+                            ball.vy = -ball.vy;
+                        }
+                    }
+                });
+            }
+
+            // Check for win condition
+            const activeBricks = gameState.bricks.filter(b => b.active).length;
+            if (activeBricks === 0 && !gameState.won) {
+                gameState.won = true;
+                gameState.gameOver = true;
+                handleGameOver();
+            }
+        }
+
+        function getHighScores() {
+            try {
+                const scores = localStorage.getItem('breakoutHighScores');
+                return scores ? JSON.parse(scores) : [];
+            } catch (e) {
+                console.log('Error reading from localStorage:', e);
+            }
+            return [];
+        }
+
+        function saveHighScores(scores) {
+            localStorage.setItem('breakoutHighScores', JSON.stringify(scores));
+            return true;
+        }
+
+        function addHighScore(newScore) {
+            let highScores = getHighScores();
+            highScores.push(newScore);
+            highScores.sort((a, b) => b.score - a.score);
+            
+            const index = highScores.findIndex(s => 
+                s.score === newScore.score && 
+                s.meetings === newScore.meetings && 
+                s.date === newScore.date
+            );
+            
+            if (highScores.length > MAX_HIGH_SCORES) {
+                highScores = highScores.slice(0, MAX_HIGH_SCORES);
+            }
+            
+            saveHighScores(highScores);
+            return index < MAX_HIGH_SCORES ? index : -1;
+        }
+
+        function displayHighScores() {
+            const highScores = getHighScores();
+            scoresBodyEl.innerHTML = '';
+            
+            if (highScores.length === 0) {
+                scoresBodyEl.innerHTML = '<tr><td colspan="4" style="text-align: center;">No high scores yet!</td></tr>';
+                return;
+            }
+            
+            highScores.forEach((score, index) => {
+                const row = document.createElement('tr');
+                if (index === newHighScoreIndex) {
+                    row.className = 'new-score';
+                }
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${score.score}</td>
+                    <td>${score.meetings}</td>
+                    <td>${score.date}</td>
+                `;
+                scoresBodyEl.appendChild(row);
+            });
+        }
+
+        function showHighScores() {
+            displayHighScores();
+            highScoresEl.style.display = 'block';
+            gameOverEl.style.display = 'none';
+        }
+
+        function closeHighScores() {
+            highScoresEl.style.display = 'none';
+            newHighScoreIndex = -1;
+        }
+
+        function handleGameOver() {
+            const finalScore = gameState.score;
+            
+            const newScore = {
+                score: finalScore,
+                meetings: gameState.meetingsDestroyed,
+                date: new Date().toLocaleDateString()
+            };
+            
+            newHighScoreIndex = addHighScore(newScore);
+            
+            if (gameState.won) {
+                if (newHighScoreIndex !== -1) {
+                    gameOverEl.innerHTML = `CALENDAR CLEARED!<br>NEW HIGH SCORE!<br><span style="font-size: 32px;">Score: ${finalScore} (Rank #${newHighScoreIndex + 1})</span><br><span style="font-size: 24px;">Meetings Destroyed: ${gameState.meetingsDestroyed}</span><br><span style="font-size: 20px;">Press SPACE to see high scores</span>`;
+                } else {
+                    gameOverEl.innerHTML = `CALENDAR CLEARED!<br><span style="font-size: 32px;">Final Score: ${finalScore}</span><br><span style="font-size: 24px;">Meetings Destroyed: ${gameState.meetingsDestroyed}</span><br><span style="font-size: 20px;">Press SPACE to see high scores</span>`;
+                }
+            } else {
+                if (newHighScoreIndex !== -1) {
+                    gameOverEl.innerHTML = `NEW HIGH SCORE!<br><span style="font-size: 32px;">Score: ${finalScore} (Rank #${newHighScoreIndex + 1})</span><br><span style="font-size: 24px;">Meetings Destroyed: ${gameState.meetingsDestroyed}</span><br><span style="font-size: 20px;">Press SPACE to see high scores</span>`;
+                } else {
+                    gameOverEl.innerHTML = `GAME OVER<br><span style="font-size: 32px;">Final Score: ${finalScore}</span><br><span style="font-size: 24px;">Meetings Destroyed: ${gameState.meetingsDestroyed}</span><br><span style="font-size: 20px;">Press SPACE to see high scores</span>`;
+                }
+            }
+            gameOverEl.style.display = 'block';
+        }
+
+        function drawGame() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawBricks();
+            drawPaddle();
+            gameState.balls.forEach(ball => drawBall(ball));
+        }
+
+        function gameLoop() {
+            if (!gameState.gameOver) {
+                updatePaddle();
+                updateBall();
+            }
+            
+            drawGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            gameState.keys[e.key] = true;
+
+            if (e.key === ' ') {
+                e.preventDefault();
+                if (highScoresEl.style.display === 'block') {
+                    closeHighScores();
+                    initGame();
+                } else if (gameState.gameOver) {
+                    showHighScores();
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            gameState.keys[e.key] = false;
+        });
+
+        initGame();
+        gameLoop();
+    </script>
