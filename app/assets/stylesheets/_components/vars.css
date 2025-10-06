@@ -50,7 +50,7 @@
   --color-11-70: hsla(255, 100%, 100%, 0.7);
   --color-11-80: hsla(255, 100%, 100%, 0.8);
   
-  --color--bg: #FFF8F0;
+  --color--bg: #FFF;
 
   --color--white: #fff;
   --color--black: #222;
@@ -59,7 +59,7 @@
   --font-family--serif: serif;
   --font-family--monospace: monospace;
 
-  --padding--viewport-sides: 2rem;
+  --padding--sidebar-sides: 2rem;
 
 
   --background-size--retro-tread: 200% 100%;

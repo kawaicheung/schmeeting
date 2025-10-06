@@ -29,6 +29,81 @@ body {
   height: 100vh;
 }
 
+main {
+  display: flex;
+  width: 100%;
+  height: 100%;
+
+  .sidebar {
+    min-width: 280px;
+    max-width: 280px;
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+
+    h3 {
+      font-size: 2rem;
+      font-family: var(--font-family--serif);
+      font-weight: 900;
+      letter-spacing: -0.05rem;
+    }
+
+    .nav {
+      margin-top: 2rem;
+      list-style-type: none;
+      padding: 0;
+
+      li {
+
+        a {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem var(--padding--sidebar-sides);
+          text-decoration: none;
+          color: var(--color--black);
+          font-weight: 700;
+
+          svg {
+            width: 24px;
+            height: 24px;
+            rotate: -10deg;
+          }
+
+          &:hover {
+            background-color: #efefef;
+            border-radius: 0.5rem;
+          }
+        }
+      }
+    }
+
+    .profile {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 700;
+      font-size: 0.9rem;
+      letter-spacing: -0.025rem;
+      padding: 0 var(--padding--sidebar-sides);
+  
+      img {
+        width: 2rem;
+        height: 2rem;
+        object-fit: cover;   /* ensures it doesn’t look squished */
+        border-radius: 50%;
+      }
+    }
+  }
+
+  .game-container {
+    width: 100%;
+  }
+}
+
 header {
   background: var(--color--bg);
   color: var(--color--black);
@@ -79,55 +154,4 @@ header {
     }
   }
 
-  .profile {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-weight: 700;
-    font-size: 0.9rem;
-    letter-spacing: -0.025rem;
-
-    img {
-      width: 2rem;
-      height: 2rem;
-      object-fit: cover;   /* ensures it doesn’t look squished */
-      border-radius: 50%;
-    }
-  }
-}
-
-main {
-  display: flex;
-  width: 100%;
-  height: 100%;
-
-  .sidebar {
-    width: 20rem;
-
-    ul {
-      margin-top: 2rem;
-      width: 100%;
-      height: 100%;
-      list-style-type: none;
-      padding: 0;
-
-      li {
-        padding: 0;
-        width: 100%;
-
-        a {
-          width: 100%;
-          display: inline-block;
-          padding: 0.5rem var(--padding--viewport-sides);
-          border-bottom: solid 1px #ccc;
-          text-decoration: none;
-          color: var(--color--black);
-        }
-      }
-    }
-  }
-
-  .game-container {
-    width: 100%;
-  }
 }
