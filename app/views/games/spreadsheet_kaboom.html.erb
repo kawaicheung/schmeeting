@@ -1,0 +1,317 @@
+
+    <div id="gameInfo">
+        <h2>Spreadsheet Kaboom!</h2>
+        <div class="stats">
+            <div>Level: <strong id="level">1</strong></div>
+            <div>Score: <strong id="score">0</strong></div>
+        </div>
+    </div>
+    
+    <canvas id="gameCanvas" width="1200" height="600"></canvas>
+    
+    <div id="instructions">
+        <p style="font-size: 18px; margin: 10px 0;">Press <strong>SPACEBAR</strong> to start</p>
+        <p style="font-size: 14px; color: #666;">Use left and right arrow keys to move</p>
+    </div>
+
+    <script>
+        var canvas = document.getElementById('gameCanvas');
+        var ctx = canvas.getContext('2d');
+        
+        var COLS = 20;
+        var ROWS = 30;
+        var CANVAS_WIDTH = 1200;
+        var CANVAS_HEIGHT = 600;
+        var CELL_WIDTH = CANVAS_WIDTH / COLS;
+        var CELL_HEIGHT = CANVAS_HEIGHT / ROWS;
+
+        var gameState = {
+            player: { row: ROWS - 6, width: 4, height: 5, lives: 3 },
+            badGuy: { col: 15, row: 1, direction: 1, speed: 0.15 },
+            bombs: [],
+            keys: {},
+            bombsToDropThisLevel: 1,
+            bombsDropped: 0,
+            dropTimer: 0,
+            dropInterval: 45,
+            currentLevel: 1,
+            isRunning: false,
+            isRestarting: false,
+            score: 0,
+            animationId: null
+        };
+
+        function drawGrid() {
+            ctx.strokeStyle = '#d0d0d0';
+            ctx.lineWidth = 1;
+            
+            for (var i = 0; i <= COLS; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * CELL_WIDTH, 0);
+                ctx.lineTo(i * CELL_WIDTH, CANVAS_HEIGHT);
+                ctx.stroke();
+            }
+            
+            for (var i = 0; i <= ROWS; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, i * CELL_HEIGHT);
+                ctx.lineTo(CANVAS_WIDTH, i * CELL_HEIGHT);
+                ctx.stroke();
+            }
+            
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CELL_HEIGHT);
+            ctx.fillRect(0, 0, CELL_WIDTH, CANVAS_HEIGHT);
+            
+            ctx.fillStyle = '#333';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            for (var i = 1; i < COLS; i++) {
+                var letter = String.fromCharCode(65 + ((i - 1) % 26));
+                ctx.fillText(letter, i * CELL_WIDTH + CELL_WIDTH / 2, CELL_HEIGHT / 2 + 5);
+            }
+            
+            for (var i = 1; i < ROWS; i++) {
+                ctx.fillText(i.toString(), CELL_WIDTH / 2, i * CELL_HEIGHT + CELL_HEIGHT / 2 + 5);
+            }
+        }
+
+        function drawPlayer() {
+            ctx.fillStyle = '#4CAF50';
+            var greenRows = [0, 2, 4]; // Rows 0, 2, 4 are green (with gaps at 1 and 3)
+            var rowsToSkip = 3 - gameState.player.lives; // Skip rows from the top
+            for (var r = 0; r < greenRows.length; r++) {
+                if (r >= rowsToSkip) { // Only draw remaining rows (skip from top)
+                    for (var i = 0; i < gameState.player.width; i++) {
+                        ctx.fillRect(
+                            (gameState.player.col + i) * CELL_WIDTH + 1,
+                            (gameState.player.row + greenRows[r]) * CELL_HEIGHT + 1,
+                            CELL_WIDTH - 2,
+                            CELL_HEIGHT - 2
+                        );
+                    }
+                }
+            }
+        }
+
+        function drawBadGuy() {
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(
+                gameState.badGuy.col * CELL_WIDTH + 1,
+                gameState.badGuy.row * CELL_HEIGHT + 1,
+                CELL_WIDTH - 2,
+                CELL_HEIGHT - 2
+            );
+        }
+
+        function drawBombs() {
+            ctx.fillStyle = '#000';
+            for (var i = 0; i < gameState.bombs.length; i++) {
+                var bomb = gameState.bombs[i];
+                var bombRow = Math.floor(bomb.y);
+                ctx.fillRect(
+                    bomb.col * CELL_WIDTH + 1,
+                    bombRow * CELL_HEIGHT + 1,
+                    CELL_WIDTH - 2,
+                    CELL_HEIGHT - 2
+                );
+            }
+        }
+
+        function updatePlayer() {
+            if (gameState.keys['ArrowLeft']) {
+                gameState.player.col = Math.max(1, gameState.player.col - 1);
+            }
+            if (gameState.keys['ArrowRight']) {
+                gameState.player.col = Math.min(COLS - gameState.player.width, gameState.player.col + 1);
+            }
+        }
+
+        function updateBadGuy() {
+            gameState.badGuy.col += gameState.badGuy.direction * gameState.badGuy.speed;
+            
+            if (gameState.badGuy.col <= 1) {
+                gameState.badGuy.col = 1;
+                gameState.badGuy.direction = Math.random() > 0.3 ? 1 : -1;
+            } else if (gameState.badGuy.col >= COLS - 1) {
+                gameState.badGuy.col = COLS - 1;
+                gameState.badGuy.direction = Math.random() > 0.3 ? -1 : 1;
+            }
+            
+            if (Math.random() < 0.02) {
+                gameState.badGuy.direction *= -1;
+            }
+        }
+
+        function dropBomb() {
+            if (gameState.bombsDropped < gameState.bombsToDropThisLevel) {
+                gameState.bombs.push({
+                    col: Math.floor(gameState.badGuy.col),
+                    y: gameState.badGuy.row + 1,
+                    speed: 0.12 + (gameState.currentLevel - 1) * 0.02
+                });
+                gameState.bombsDropped++;
+            }
+        }
+
+        function updateBombs() {
+            for (var i = gameState.bombs.length - 1; i >= 0; i--) {
+                var bomb = gameState.bombs[i];
+                bomb.y += bomb.speed;
+                
+                var bombRow = Math.floor(bomb.y);
+                
+                // Calculate the bounding box of remaining green rows
+                var greenRows = [0, 2, 4];
+                var rowsToSkip = 3 - gameState.player.lives;
+                var topRow = gameState.player.row + greenRows[rowsToSkip]; // First visible green row
+                var bottomRow = gameState.player.row + greenRows[greenRows.length - 1]; // Last green row
+                
+                // Check if bomb is anywhere within the bounding box (including gaps)
+                if (bombRow >= topRow && bombRow <= bottomRow) {
+                    if (bomb.col >= gameState.player.col && bomb.col < gameState.player.col + gameState.player.width) {
+                        gameState.bombs.splice(i, 1);
+                        gameState.score += 10;
+                        document.getElementById('score').textContent = gameState.score;
+                        continue;
+                    }
+                }
+                
+                // Bomb fell off screen - lose a life and restart level
+                if (bomb.y > ROWS) {
+                    loseLife();
+                    return;
+                }
+            }
+        }
+
+      function loseLife() {
+          gameState.player.lives--;
+          
+          if (gameState.player.lives <= 0) {
+              endGame();
+          } else {
+              // Restart current level
+              gameState.isRunning = false;
+              gameState.isRestarting = true;
+              gameState.bombsDropped = 0;
+              gameState.bombs = [];
+              gameState.badGuy.col = Math.floor(COLS / 2);
+              gameState.dropTimer = 0;
+              gameState.player.col = Math.floor((COLS - gameState.player.width) / 2);
+              
+              setTimeout(function() {
+                  gameState.isRunning = true;
+                  gameState.isRestarting = false;
+                  gameLoop();
+              }, 1000);
+          }
+      }
+
+        function checkLevelComplete() {
+            if (gameState.bombsDropped >= gameState.bombsToDropThisLevel && gameState.bombs.length === 0) {
+                nextLevel();
+            }
+        }
+
+        function nextLevel() {
+            gameState.isRunning = false;
+            gameState.currentLevel++;
+            gameState.bombsToDropThisLevel += 5;
+            gameState.bombsDropped = 0;
+            gameState.bombs = [];
+            gameState.badGuy.col = Math.floor(COLS / 2);
+            gameState.badGuy.speed = Math.min(0.15 + (gameState.currentLevel - 1) * 0.02, 0.4);
+            gameState.dropInterval = Math.max(20, 45 - (gameState.currentLevel - 1) * 3);
+            gameState.dropTimer = 0;
+            gameState.player.col = Math.floor((COLS - gameState.player.width) / 2);
+            // Don't reset lives when advancing to next level
+            document.getElementById('level').textContent = gameState.currentLevel;
+            
+            setTimeout(function() {
+                gameState.isRunning = true;
+                gameLoop();
+            }, 1000);
+        }
+
+        function endGame() {
+            gameState.isRunning = false;
+            if (gameState.animationId) {
+                cancelAnimationFrame(gameState.animationId);
+                gameState.animationId = null;
+            }
+            
+            var instructionsDiv = document.getElementById('instructions');
+            instructionsDiv.innerHTML = '<p style="font-size: 24px; color: #ff0000; margin: 10px 0;">Game Over!</p>' +
+                '<p style="font-size: 18px;">Final Score: <strong>' + gameState.score + '</strong></p>' +
+                '<p style="font-size: 18px;">Level Reached: <strong>' + gameState.currentLevel + '</strong></p>' +
+                '<p style="font-size: 16px; margin-top: 10px;">Press <strong>SPACEBAR</strong> to play again</p>';
+        }
+
+        function gameLoop() {
+            if (!gameState.isRunning) return;
+            
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            drawGrid();
+            updatePlayer();
+            updateBadGuy();
+            updateBombs();
+            
+            gameState.dropTimer++;
+            if (gameState.dropTimer >= gameState.dropInterval) {
+                dropBomb();
+                gameState.dropTimer = 0;
+            }
+            
+            drawBadGuy();
+            drawBombs();
+            drawPlayer();
+            
+            checkLevelComplete();
+            
+            gameState.animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            gameState.currentLevel = 1;
+            gameState.bombsToDropThisLevel = 10;
+            gameState.bombsDropped = 0;
+            gameState.bombs = [];
+            gameState.badGuy.col = Math.floor(COLS / 2);
+            gameState.badGuy.speed = 0.15;
+            gameState.dropInterval = 45;
+            gameState.dropTimer = 0;
+            gameState.player.col = Math.floor((COLS - gameState.player.width) / 2);
+            gameState.player.lives = 3; // Reset lives
+            gameState.score = 0;
+            gameState.isRunning = true;
+            
+            document.getElementById('level').textContent = 1;
+            document.getElementById('score').textContent = 0;
+            
+            var instructionsDiv = document.getElementById('instructions');
+            instructionsDiv.innerHTML = '<p style="font-size: 14px; color: #666;">Use left and right arrow keys to move</p>';
+            
+            gameLoop();
+        }
+
+
+        window.addEventListener('keydown', function(e) {
+            if (e.code === 'Space' && !gameState.isRunning && !gameState.isRestarting) {
+                e.preventDefault();
+                startGame();
+            }
+            gameState.keys[e.key] = true;
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('keyup', function(e) {
+            gameState.keys[e.key] = false;
+        });
+
+        drawGrid();
+    </script>

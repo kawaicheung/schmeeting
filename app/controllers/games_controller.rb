@@ -8,4 +8,7 @@ class GamesController < ApplicationController
 
   def gantt_chart_kong
   end
+
+  def spreadsheet_kaboom
+  end
 end

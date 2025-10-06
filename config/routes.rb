@@ -14,6 +14,7 @@ Rails.application.routes.draw do
   get "games/meeting-breakout" => "games#meeting_breakout"
   get "games/gantt-chart-kong" => "games#gantt_chart_kong"
   get "games/kanban-memory" => "games#kanban_memory"
+  get "games/spreadsheet-kaboom" => "games#spreadsheet_kaboom"
 
   # Defines the root path route ("/")
   # root "posts#index"
