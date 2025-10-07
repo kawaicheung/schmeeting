@@ -273,7 +273,7 @@ function createBricks() {
         function drawBricks() {
             // Draw day headers
             ctx.font = 'bold 14px Arial';
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = '#222';
             for (let day = 0; day < 7; day++) {
                 const x = BRICK_OFFSET_LEFT + day * (BRICK_WIDTH + BRICK_PADDING) + BRICK_WIDTH / 2;
                 ctx.textAlign = 'center';
@@ -305,15 +305,14 @@ function createBricks() {
             }
             
             // Draw time markers
-            ctx.font = '10px Arial';
-            ctx.fillStyle = '#888';
+            ctx.font = '12px Arial';
+            ctx.fillStyle = '#222';
             ctx.textAlign = 'right';
             for (let i = 0; i <= 10; i++) {
                 const y = BRICK_OFFSET_TOP + i * (BASE_BRICK_HEIGHT + BRICK_PADDING);
-                if (y < 380) {
-                    const hour = 8 + i;
-                    ctx.fillText(`${hour}:00`, TIME_LABEL_WIDTH - 5, y + 5);
-                }
+                const hour = 8 + i;
+                ctx.fillText(`${hour}:00`, TIME_LABEL_WIDTH - 5, y + 5);
+               
             }
             
             // Draw meetings
@@ -370,7 +369,7 @@ function createBricks() {
         }
 
         function drawPaddle() {
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = '#222';
             ctx.fillRect(gameState.paddle.x, PADDLE_Y, PADDLE_WIDTH, PADDLE_HEIGHT);
             
             ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
@@ -378,7 +377,7 @@ function createBricks() {
         }
 
         function drawBall(ball) {
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = '#222';
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
             ctx.fill();
@@ -597,7 +596,7 @@ function createBricks() {
         }
 
         function drawGame() {
-            ctx.fillStyle = '#1a1a2e';
+            ctx.fillStyle = '#fff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             drawBricks();

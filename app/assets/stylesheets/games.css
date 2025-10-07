@@ -115,7 +115,6 @@ main {
   width: 100%;
   margin-left: var(--width--sidebar);
   margin-top: var(--height--header);
-  padding: 1rem;
 }
 
 .boss-btn {
@@ -134,5 +133,6 @@ main {
   box-shadow: 2px 4px 4px rgba(0,0,0,0.1);
 }
 
-
-
+#gameCanvas {
+  border: solid 1px red;
+}
