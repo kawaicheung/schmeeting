@@ -3,6 +3,7 @@
 
   --color--alice-blue: hsl(204, 100%, 93%);
   --color--light-sky-blue: hsl(207, 100%, 82%);
+  --color--light-blue: hsl(180, 72%, 89%);
   
   --color--bg: #FFF;
   
@@ -15,11 +16,12 @@
   --font-family--monospace: monospace;
 
   --padding--sidebar-sides: 1rem;
+  --padding--viewport-edge: 1rem;
 
-  --width--sidebar: 280px;
+  --width--sidebar: 240px;
   --height--header: 50px;
   --margin--header: 10px;
 
-  --rotate--default: -8deg;
+  --rotate--default: -5deg;
 
 }

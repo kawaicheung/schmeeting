@@ -34,11 +34,10 @@ body {
   min-width: var(--width--sidebar);
   max-width: var(--width--sidebar);
   height: 100vh;
-  background: hsl(180, 72%, 89%);
+  background: var(--color--light-blue);
   display: flex;
   flex-direction: column;
   padding: 1rem;
-
 
   .nav {
     display: flex;
@@ -57,13 +56,12 @@ body {
         padding: 0.5rem var(--padding--sidebar-sides);
         text-decoration: none;
         color: hsl(210, 22%, 18%);
-        font-weight: 700;
+        font-weight: 500;
         border-radius: 0.5rem;
 
         svg {
           width: 24px;
           height: 24px;
-          rotate: var(--rotate--default);
         }
 
         &:hover {
@@ -73,31 +71,30 @@ body {
       }
     }
   }
-
 }
 
 header {
   position: fixed;
-  top: var(--margin--header);
-  right:  var(--margin--header);
-  border-radius: 0.5rem;
+  top: 0;
+  right: 0;
+  width: calc(100vw - var(--width--sidebar));
   height: var(--height--header);
-  background: hsl(180, 72%, 89%);
+  background: hsl(214, 86%, 23%);
   color: var(--color--black);
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 1rem;
+  padding: 0 1rem;
 
   .profile {
-    margin-top: auto;
     display: flex;
     align-items: center;
     gap: 0.4rem;
     font-weight: 700;
     font-size: 0.9rem;
     letter-spacing: -0.025rem;
-    padding: 0 var(--padding--sidebar-sides);
+    color: var(--color--white);
 
     img {
       width: 2rem;
@@ -106,36 +103,35 @@ header {
       border-radius: 50%;
     }
   }
-  .branding {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-right: auto;
-    font-weight: 700;
-    font-size: 0.9rem;
-    letter-spacing: -0.025rem;
-
-    .logo {
-      font-size: 1.6rem;
-      font-style: italic;
-      font-weight: 900;
-    }
-  }
 
   a {
-    color: #fff;
+    color: var(--color--white);
   }
-
- 
 }
-
 
 main {
   display: flex;
   flex-direction: column;
   width: 100%;
   margin-left: var(--width--sidebar);
-  margin-top: calc(var(--margin--header) + var(--height--header) + var(--margin--header));
+  margin-top: var(--height--header);
+  padding: 1rem;
+}
+
+.boss-btn {
+  position: fixed;
+  bottom: var(--padding--viewport-edge);
+  right: var(--padding--viewport-edge);
+  padding: 1rem;
+  object-fit: cover;   /* ensures it doesn’t look squished */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color--light-blue);
+  color: var(--color--black);
+  border: solid 1px rgba(0,0,0,0.1);
+  box-shadow: 2px 4px 4px rgba(0,0,0,0.1);
 }
 
 
