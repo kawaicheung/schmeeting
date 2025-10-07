@@ -1,6 +1,5 @@
 
     <canvas id="gameCanvas" width="1200" height="600"></canvas>
-    
     <div id="gameInfo">
         <h2>Spreadsheet Kaboom!</h2>
         <div class="stats">
@@ -17,6 +16,12 @@
     <script>
         var canvas = document.getElementById('gameCanvas');
         var ctx = canvas.getContext('2d');
+
+        // Fix blurriness
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = 1200 * dpr;
+        canvas.height = 600 * dpr;
+        ctx.scale(dpr, dpr);
         
         var COLS = 27;
         var ROWS = 35;
