@@ -1,4 +1,7 @@
 
+  
+    <canvas id="gameCanvas" width="1200" height="600"></canvas>
+
   <div id="score">Score: 0</div>
   <div id="gameOver">GAME OVER<br><span style="font-size: 24px;">Press SPACE to restart</span></div>
   <div id="highScores">
@@ -17,9 +20,6 @@
     </table>
     <button onclick="closeHighScores()">Continue (SPACE)</button>
   </div>
-  
-    <canvas id="gameCanvas" width="1200" height="600"></canvas>
-
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');

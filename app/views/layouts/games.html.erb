@@ -16,33 +16,28 @@
     <%= javascript_importmap_tags %>
   </head>
   <body>
-    <main>
-      <div class="sidebar">
-        <h3>Schmeeting/.</h3>
-        <ul class="nav">
-          <li><%= link_to games_meeting_breakout_path, data: { turbo: false } do %><%= render "shared/svg_calendar" %><span>Calendar</span><% end %></li>
-          <li><%= link_to games_kanban_memory_path, data: { turbo: false } do %><%= render "shared/svg_kanban" %><span>Kanban</span><% end %></li>
-          <li><%= link_to games_gantt_chart_kong_path, data: { turbo: false } do %><%= render "shared/svg_gantt_chart" %><span>Gantt Chart</span><% end %></li>
-          <li><%= link_to games_spreadsheet_kaboom_path, data: { turbo: false } do %><%= render "shared/svg_spreadsheet" %><span>Spreadsheet</span><% end %></li>
-          <li><%= link_to games_spreadsheet_kaboom_path, data: { turbo: false } do %><%= render "shared/svg_mail" %><span>Mail</span><% end %></li>
-        </ul> 
-        <div class="profile">
-          <%= image_tag "kc.png" %>
-          <div>by Ka Wai Cheung</div>
-        </div>
-      </div>  
-      <div class="game-container">
-        <header>
-          <div class="branding">
-            <span class="logo">Schmeeting.</span> 
-            <span class="tagline">Yes, I'm working.</span>
-          </div>
-         
-        </header>
-        <div class="game-container">
-          <%= yield %>
-        </div>
+    <div class="sidebar">
+      <%= render "shared/logo" %>
+      <ul class="nav">
+        <li><%= link_to games_meeting_breakout_path, data: { turbo: false } do %><%= render "shared/svg_calendar" %><span>Calendar</span><% end %></li>
+        <li><%= link_to games_kanban_memory_path, data: { turbo: false } do %><%= render "shared/svg_kanban" %><span>Kanban</span><% end %></li>
+        <li><%= link_to games_gantt_chart_kong_path, data: { turbo: false } do %><%= render "shared/svg_gantt_chart" %><span>Gantt Chart</span><% end %></li>
+        <li><%= link_to games_spreadsheet_kaboom_path, data: { turbo: false } do %><%= render "shared/svg_spreadsheet" %><span>Spreadsheet</span><% end %></li>
+        <li><%= link_to games_spreadsheet_kaboom_path, data: { turbo: false } do %><%= render "shared/svg_mail" %><span>Mail</span><% end %></li>
+      </ul> 
+    </div>  
+    <header>
+      <div class="branding">
+        <span class="logo">Schmeeting.</span> 
+        <span class="tagline">Yes, I'm working.</span>
       </div>
+      <div class="profile">
+        <%= image_tag "kc.png" %>
+        <div>by Ka Wai Cheung</div>
+      </div>
+    </header>
+    <main>
+      <%= yield %>
     </main>
   </body>
 </html>

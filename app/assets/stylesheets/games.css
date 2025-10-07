@@ -25,94 +25,87 @@ body {
   padding: 0;
   background: var(--color--bg);
   display: flex;
-  flex-direction: column;
   height: 100vh;
+  width: 100%;
 }
 
-main {
+.sidebar {
+  position: fixed;
+  min-width: var(--width--sidebar);
+  max-width: var(--width--sidebar);
+  height: 100vh;
+  background: hsl(180, 72%, 89%);
   display: flex;
-  width: 100%;
-  height: 100%;
+  flex-direction: column;
+  padding: 1rem;
 
-  .sidebar {
-    min-width: 280px;
-    max-width: 280px;
-    background-color: #fff;
+
+  .nav {
     display: flex;
     flex-direction: column;
-    padding: 1rem;
+    margin-top: 2rem;
+    list-style-type: none;
+    padding: 0;
+    gap: 2px;
 
-    h3 {
-      font-size: 2rem;
-      font-family: var(--font-family--serif);
-      font-weight: 900;
-      letter-spacing: -0.05rem;
-    }
+    li {
+      a {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem var(--padding--sidebar-sides);
+        text-decoration: none;
+        color: hsl(210, 22%, 18%);
+        font-weight: 700;
+        border-radius: 0.5rem;
 
-    .nav {
-      margin-top: 2rem;
-      list-style-type: none;
-      padding: 0;
+        svg {
+          width: 24px;
+          height: 24px;
+          rotate: var(--rotate--default);
+        }
 
-      li {
-
-        a {
-          width: 100%;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem var(--padding--sidebar-sides);
-          text-decoration: none;
-          color: var(--color--black);
-          font-weight: 700;
-
-          svg {
-            width: 24px;
-            height: 24px;
-            rotate: -10deg;
-          }
-
-          &:hover {
-            background-color: #efefef;
-            border-radius: 0.5rem;
-          }
+        &:hover {
+          color: #fff;
+          background-color: hsl(203, 84%, 74%);
         }
       }
     }
-
-    .profile {
-      margin-top: auto;
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-weight: 700;
-      font-size: 0.9rem;
-      letter-spacing: -0.025rem;
-      padding: 0 var(--padding--sidebar-sides);
-  
-      img {
-        width: 2rem;
-        height: 2rem;
-        object-fit: cover;   /* ensures it doesn’t look squished */
-        border-radius: 50%;
-      }
-    }
   }
 
-  .game-container {
-    width: 100%;
-  }
 }
 
 header {
-  background: var(--color--bg);
+  position: fixed;
+  top: var(--margin--header);
+  right:  var(--margin--header);
+  border-radius: 0.5rem;
+  height: var(--height--header);
+  background: hsl(180, 72%, 89%);
   color: var(--color--black);
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 0.75rem var(--padding--viewport-sides);
   gap: 1rem;
 
+  .profile {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: -0.025rem;
+    padding: 0 var(--padding--sidebar-sides);
+
+    img {
+      width: 2rem;
+      height: 2rem;
+      object-fit: cover;   /* ensures it doesn’t look squished */
+      border-radius: 50%;
+    }
+  }
   .branding {
     display: flex;
     align-items: center;
@@ -133,25 +126,17 @@ header {
     color: #fff;
   }
 
-  .buy-me-coffee-btn {
-    background: var(--color-0-50);
-    border-radius: 0.5rem;
-    border: var(--border--crevice);
-    padding:  0.75rem;
-    text-decoration: none;
-    background: var(--background--retro-tread);
-    background-size: var(--background-size--retro-tread);
-    animation: var(--animation--retro-tread);
-    color: var(--color--black);
-    white-space: nowrap !important;
-    font-weight: 700;
-    font-size: 0.9rem;
-    letter-spacing: -0.025rem;
-  
-    &::after {
-      content: '☕';
-      padding-left: 0.25rem;
-    }
-  }
-
+ 
 }
+
+
+main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-left: var(--width--sidebar);
+  margin-top: calc(var(--margin--header) + var(--height--header) + var(--margin--header));
+}
+
+
+
